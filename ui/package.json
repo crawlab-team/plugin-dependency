@@ -14,7 +14,8 @@
     "element-plus": "1.0.2-beta.40",
     "vue": "3.0.11",
     "vue-router": "4.0.11",
-    "crawlab-ui": "0.6.0-beta.202109082041"
+    "crawlab-ui": "0.6.0-beta.202109221613",
+    "vuex": "^4.0.0-0"
   },
   "author": "Marvin Zhang",
   "license": "MIT",

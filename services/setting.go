@@ -11,8 +11,9 @@ import (
 )
 
 type SettingService struct {
-	api *gin.Engine
-	col *mongo2.Col // dependency settings
+	parent *Service
+	api    *gin.Engine
+	col    *mongo2.Col // dependency settings
 }
 
 func (svc *SettingService) Init() {
@@ -159,10 +160,11 @@ func (svc *SettingService) _toggleSettingFunc(value bool) func(c *gin.Context) {
 	}
 }
 
-func NewSettingService(api *gin.Engine) (svc *SettingService) {
+func NewSettingService(parent *Service) (svc *SettingService) {
 	svc = &SettingService{
-		api: api,
-		col: mongo2.GetMongoCol(constants.DependencySettingsColName),
+		parent: parent,
+		api:    parent.GetApi(),
+		col:    mongo2.GetMongoCol(constants.DependencySettingsColName),
 	}
 
 	return svc

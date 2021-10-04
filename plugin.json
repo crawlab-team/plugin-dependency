@@ -10,7 +10,7 @@
   },
   "install_url": "https://github.com/crawlab-team/plugin-dependency",
   "deploy_mode": "all",
-  "auto_start": true,
+  "auto_start": false,
   "ui_components": [
     {
       "name": "dependency-settings",

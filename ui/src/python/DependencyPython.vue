@@ -37,8 +37,14 @@
               size="small"
               @change="onInstalledChange"
           >
-            <el-radio-button label="installed">Installed</el-radio-button>
-            <el-radio-button label="available">Installable</el-radio-button>
+            <el-radio-button label="installed">
+              <font-awesome-icon :icon="['fa', 'check']" style="margin-right: 5px"/>
+              Installed
+            </el-radio-button>
+            <el-radio-button label="available">
+              <font-awesome-icon :icon="['fab', 'python']" style="margin-right: 5px"/>
+              Installable
+            </el-radio-button>
           </el-radio-group>
           <cl-fa-icon-button
               class="update-btn"

@@ -157,7 +157,7 @@ export default defineComponent({
           key: 'node_ids',
           label: 'Installed Nodes',
           icon: ['fa', 'server'],
-          width: 'auto',
+          width: '580',
           value: (row) => {
             const result = (installed.value ? row : row.result) || {};
             const node_ids = result.node_ids || [];

@@ -24,23 +24,32 @@
               @clear="onSearchClear"
           />
           <cl-label-button
+              class="search-btn"
               size="small"
               :icon="['fa', 'search']"
               label="Search"
               :disabled="!installed ? !searchQuery : false"
               @click="onSearch"
           />
+          <el-radio-group
+              class="view-mode"
+              v-model="viewMode"
+              size="small"
+              @change="onInstalledChange"
+          >
+            <el-radio-button label="installed">Installed</el-radio-button>
+            <el-radio-button label="available">Installable</el-radio-button>
+          </el-radio-group>
           <cl-fa-icon-button
               class="update-btn"
               size="small"
-              type="warning"
+              type="primary"
               tooltip="Click to update installed dependencies"
               :icon="updateInstalledLoading ? ['fa', 'spinner'] : ['fa', 'sync']"
               :spin="updateInstalledLoading"
               :disabled="updateInstalledLoading"
               @click="onUpdate"
           />
-          <el-checkbox v-model="installed" label="Installed" @change="onInstalledChange"/>
         </div>
         <el-pagination
             :current-page="tablePagination.page"
@@ -205,7 +214,9 @@ export default defineComponent({
 
     const tableTotal = ref(0);
 
-    const installed = ref(false);
+    const viewMode = ref('installed');
+
+    const installed = computed(() => viewMode.value === 'installed');
 
     const loading = ref(false);
 
@@ -311,6 +322,7 @@ export default defineComponent({
       dialogVisible,
       searchQuery,
       form,
+      viewMode,
       installed,
       loading,
       updateInstalledLoading,
@@ -343,8 +355,13 @@ export default defineComponent({
   height: 64px;
 }
 
-.top-bar >>> .update-btn {
-  margin-left: 10px;
+.top-bar >>> .search-btn {
+  margin-right: 0;
+}
+
+.top-bar >>> .update-btn,
+.top-bar >>> .view-mode {
+  margin-left: 20px;
 }
 
 .top-bar .pagination {

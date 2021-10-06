@@ -9,6 +9,8 @@
       :action-functions="actionFunctions"
       :visible-buttons="['export', 'customize-columns']"
       table-pagination-layout="total, prev, pager, next"
+      :table-actions-prefix="tableActionsPrefix"
+      @select="onSelect"
   >
     <template #nav-actions-extra>
       <div class="top-bar">
@@ -50,11 +52,18 @@
               class="update-btn"
               size="small"
               type="primary"
-              tooltip="Click to update installed dependencies"
+              :tooltip="updateTooltip"
               :icon="updateInstalledLoading ? ['fa', 'spinner'] : ['fa', 'sync']"
               :spin="updateInstalledLoading"
               :disabled="updateInstalledLoading"
               @click="onUpdate"
+          />
+          <cl-label-button
+              class="tasks-btn"
+              size="small"
+              :icon="['fa', 'tasks']"
+              label="Tasks"
+              @click="() => onDialogOpen('tasks')"
           />
         </div>
         <el-pagination
@@ -70,7 +79,8 @@
     <template #extra>
       <DependencyPythonInstallForm
           :visible="dialogVisible.install"
-          :form="installForm"
+          :nodes="allNodes"
+          :names="installForm.names"
           @confirm="onInstall"
           @close="() => onDialogClose('install')"
       />
@@ -79,6 +89,18 @@
           :form="manageForm"
           @close="() => onDialogClose('manage')"
       />
+      <cl-dialog
+          title="Tasks"
+          :visible="dialogVisible.tasks"
+          width="1024px"
+          @confirm="() => onDialogClose('tasks')"
+          @close="() => onDialogClose('tasks')"
+      >
+        <DependencyTaskList
+            v-if="dialogVisible.tasks"
+            type="python"
+        />
+      </cl-dialog>
     </template>
   </cl-list-layout>
 </template>
@@ -86,14 +108,18 @@
 <script lang="ts">
 import {computed, defineComponent, h, onBeforeMount, ref} from 'vue';
 import {ClNavLink, ClNodeType, useRequest} from 'crawlab-ui';
-import {ElMessageBox} from 'element-plus';
+import {ElMessage, ElMessageBox} from 'element-plus';
 import {useStore} from 'vuex';
 import DependencyPythonInstallForm from './DependencyPythonInstallForm.vue';
 import DependencyPythonManageForm from './DependencyPythonManageForm.vue';
+import DependencyTaskList from '../task/DependencyTaskList.vue';
 
 const endpoint = '/plugin-proxy/dependency/python';
+const endpointS = '/plugin-proxy/dependency/settings';
+const endpointT = '/plugin-proxy/dependency/tasks';
 
 const {
+  get,
   getList: getList_,
   post,
 } = useRequest();
@@ -107,12 +133,38 @@ const getDefaultForm = () => {
 
 export default defineComponent({
   name: 'DependencyPython',
-  components: {DependencyPythonManageForm, DependencyPythonInstallForm},
+  components: {DependencyTaskList, DependencyPythonManageForm, DependencyPythonInstallForm},
   setup() {
     const store = useStore();
 
     const allNodeListSelectOptions = computed(() => store.getters[`node/allListSelectOptions`]);
     const allNodeDict = computed(() => store.getters[`node/allDict`]);
+    const allNodes = computed(() => store.state.node.allList);
+
+    const setting = ref({});
+
+    const getSetting = async () => {
+      const res = await get(`${endpointS}`, {
+        conditions: [{
+          key: 'key',
+          op: 'eq',
+          value: 'python',
+        }],
+      });
+      if (res.data && res.data.length > 0) {
+        setting.value = res.data[0];
+      }
+    };
+
+    onBeforeMount(getSetting);
+
+    const updateTooltip = computed(() => {
+      return `Click to update dependencies`;
+    });
+
+    const installForm = ref({
+      names: [],
+    });
 
     const isManageable = (dep) => {
       if (installed.value) return true;
@@ -184,6 +236,7 @@ export default defineComponent({
                   icon: ['fa', 'download'],
                   tooltip: 'Install',
                   onClick: async (row) => {
+                    installForm.value.names = [row.name];
                     dialogVisible.value.install = true;
                   },
                 },
@@ -192,7 +245,7 @@ export default defineComponent({
               return [
                 {
                   type: 'warning',
-                  icon: ['fa', 'tools'],
+                  icon: ['fa', 'cog'],
                   tooltip: 'Manage',
                   onClick: async (row) => {
                     dialogVisible.value.manage = true;
@@ -219,6 +272,20 @@ export default defineComponent({
     });
 
     const tableTotal = ref(0);
+
+    const tableActionsPrefix = ref([
+      {
+        buttonType: 'fa-icon',
+        label: 'Install',
+        tooltip: 'Install',
+        icon: ['fa', 'download'],
+        type: 'primary',
+        disabled: () => installForm.value.names.length === 0,
+        onClick: () => {
+          dialogVisible.value.install = true;
+        },
+      }
+    ]);
 
     const viewMode = ref('installed');
 
@@ -261,9 +328,8 @@ export default defineComponent({
       try {
         await post(`${endpoint}/update`);
       } finally {
-        setTimeout(() => {
-          updateInstalledLoading.value = false;
-        }, 5000);
+        updateInstalledLoading.value = false;
+        await getList();
       }
     };
 
@@ -281,9 +347,14 @@ export default defineComponent({
     const dialogVisible = ref({
       install: false,
       manage: false,
+      tasks: false,
     });
 
     const navActions = [];
+
+    const onDialogOpen = (key) => {
+      dialogVisible.value[key] = true;
+    };
 
     const onDialogClose = (key) => {
       dialogVisible.value[key] = false;
@@ -309,9 +380,21 @@ export default defineComponent({
       await actionFunctions.value.getList();
     };
 
-    const installForm = ref({});
+    const onSelect = (rows) => {
+      installForm.value.names = rows.map(d => d.name);
+    };
 
-    const onInstall = async () => {
+    const onInstall = async ({mode, nodeIds}) => {
+      const data = {
+        names: installForm.value.names,
+        mode,
+      };
+      if (data.mode === 'all') {
+        data['node_id'] = nodeIds;
+      }
+      await post(`${endpoint}/install`, data);
+      await ElMessage.success('Started to install dependencies');
+      dialogVisible.value.install = false;
     };
 
     const manageForm = ref({});
@@ -323,6 +406,7 @@ export default defineComponent({
       tableData,
       tableTotal,
       tablePagination,
+      tableActionsPrefix,
       actionFunctions,
       navActions,
       dialogVisible,
@@ -333,15 +417,21 @@ export default defineComponent({
       loading,
       updateInstalledLoading,
       allNodeListSelectOptions,
+      allNodes,
+      onDialogOpen,
       onDialogClose,
       onSearch,
       onSearchClear,
       onUpdate,
       onInstalledChange,
       onFilterChange,
+      onSelect,
       installForm,
       manageForm,
       onInstall,
+      setting,
+      getSetting,
+      updateTooltip,
     };
   },
 });

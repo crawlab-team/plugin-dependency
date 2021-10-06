@@ -15,7 +15,7 @@
     {
       "name": "dependency-settings",
       "title": "Dependencies",
-      "src": "ui/src/DependencySettings.vue",
+      "src": "ui/src/setting/DependencySettings.vue",
       "type": "view",
       "path": "dependencies/settings"
     },

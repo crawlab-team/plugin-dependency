@@ -10,13 +10,17 @@
       :visible-buttons="['export', 'customize-columns']"
   >
     <template #extra>
-      <cl-create-edit-dialog
+      <cl-dialog
           :visible="dialogVisible"
-          width="1024px"
-          no-batch
+          width="800px"
+          @confirm="onDialogConfirm"
           @close="onDialogClose"
       >
-      </cl-create-edit-dialog>
+        <DependencySettingForm
+            :form="form"
+            @change="onFormChange"
+        />
+      </cl-dialog>
     </template>
   </cl-list-layout>
 </template>
@@ -25,6 +29,8 @@
 import {defineComponent, onBeforeMount, ref, h} from 'vue';
 import {useRequest, ClNavLink, ClSwitch} from 'crawlab-ui';
 import {useRouter} from 'vue-router';
+import DependencySettingForm from './DependencySettingForm.vue';
+import {ElMessage} from 'element-plus';
 
 const endpoint = '/plugin-proxy/dependency/settings';
 
@@ -35,9 +41,11 @@ const {
 
 export default defineComponent({
   name: 'DependencySettings',
-  components: {},
+  components: {DependencySettingForm},
   setup(props, {emit}) {
-    const router = useRouter();
+    const form = ref({});
+
+    const dialogVisible = ref(false);
 
     const tableColumns = [
       {
@@ -80,19 +88,12 @@ export default defineComponent({
         width: '200',
         buttons: [
           {
-            type: 'primary',
-            icon: ['fa', 'search'],
-            tooltip: 'View',
-            onClick: (row) => {
-              router.push(`/dependencies/${row.key}`);
-            },
-          },
-          {
             type: 'warning',
             icon: ['fa', 'cog'],
-            tooltip: 'Config',
+            tooltip: 'Manage',
             onClick: (row) => {
-              // router.push(`/notifications/${row._id}`);
+              form.value = {...row};
+              dialogVisible.value = true;
             },
           },
         ],
@@ -124,11 +125,21 @@ export default defineComponent({
       },
     });
 
-    const dialogVisible = ref(false);
-
     const onDialogClose = () => {
-      // dialogVisible.value = false;
-      // form.value = getDefaultForm();
+      form.value = {};
+      dialogVisible.value = false;
+    };
+
+    const onDialogConfirm = async () => {
+      if (!form.value._id) return;
+      await post(`${endpoint}/${form.value._id}`, form.value);
+      await ElMessage.success('Saved successfully');
+      form.value = {};
+      dialogVisible.value = false;
+    };
+
+    const onFormChange = (value) => {
+      form.value = {...value};
     };
 
     return {
@@ -138,7 +149,10 @@ export default defineComponent({
       tablePagination,
       actionFunctions,
       dialogVisible,
+      form,
       onDialogClose,
+      onDialogConfirm,
+      onFormChange,
     };
   },
 });

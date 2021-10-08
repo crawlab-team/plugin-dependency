@@ -8,13 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"strconv"
 )
 
 type TaskService struct {
 	parent *Service
 	api    *gin.Engine
-	colT   *mongo2.Col // tasks
-	colL   *mongo2.Col // logs
 }
 
 func (svc *TaskService) Init() {
@@ -23,26 +22,34 @@ func (svc *TaskService) Init() {
 }
 
 func (svc *TaskService) getList(c *gin.Context) {
+	// filter
+	query, _ := controllers.GetFilterQuery(c)
+	query["type"] = constants.DependencyTypePython
+
+	// all
+	all, _ := strconv.ParseBool(c.Query("all"))
+
 	// pagination
 	pagination := controllers.MustGetPagination(c)
 
-	// query
-	query := bson.M{"type": constants.DependencyTypePython}
+	// options
+	opts := &mongo2.FindOptions{
+		Sort: bson.D{{"_id", -1}},
+	}
+	if !all {
+		opts.Skip = (pagination.Page - 1) * pagination.Size
+		opts.Limit = pagination.Size
+	}
 
 	// tasks
 	var tasks []models.Task
-	opts := &mongo2.FindOptions{
-		Skip:  (pagination.Page - 1) * pagination.Size,
-		Limit: pagination.Size,
-		Sort:  bson.D{{"_id", -1}},
-	}
-	if err := svc.colT.Find(query, opts).All(&tasks); err != nil {
+	if err := svc.parent.colT.Find(query, opts).All(&tasks); err != nil {
 		controllers.HandleErrorInternalServerError(c, err)
 		return
 	}
 
 	// total
-	total, err := svc.colT.Count(query)
+	total, err := svc.parent.colT.Count(query)
 	if err != nil {
 		controllers.HandleErrorInternalServerError(c, err)
 		return
@@ -59,7 +66,7 @@ func (svc *TaskService) getLogs(c *gin.Context) {
 	}
 
 	var logList []models.Log
-	if err := svc.colL.Find(bson.M{"task_id": id}, nil).All(&logList); err != nil {
+	if err := svc.parent.colL.Find(bson.M{"task_id": id}, nil).All(&logList); err != nil {
 		controllers.HandleErrorInternalServerError(c, err)
 		return
 	}
@@ -71,8 +78,6 @@ func NewTaskService(parent *Service) (svc *TaskService) {
 	svc = &TaskService{
 		parent: parent,
 		api:    parent.GetApi(),
-		colT:   mongo2.GetMongoCol(constants.DependencyTasksColName),
-		colL:   mongo2.GetMongoCol(constants.DependencyLogsColName),
 	}
 
 	return svc

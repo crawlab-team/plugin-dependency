@@ -2,8 +2,8 @@ package entity
 
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
-type TaskMessage struct {
+type UninstallParams struct {
 	TaskId primitive.ObjectID `json:"task_id"`
-	Status string             `json:"status"`
-	Error  string             `json:"error"`
+	Names  []string           `json:"names"`
+	Cmd    string             `json:"cmd"`
 }

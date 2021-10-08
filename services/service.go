@@ -69,6 +69,9 @@ func (svc *Service) Start() (err error) {
 
 		// start api
 		go svc.StartApi()
+
+		// start python service
+		go svc.pythonSvc.Start()
 	}
 
 	// get current node
@@ -111,12 +114,14 @@ func (svc *Service) initData() (err error) {
 			Key:         constants.SettingKeyPython,
 			Name:        "Python",
 			Description: `Dependencies for Python environment`,
+			Cmd:         "pip",
 			Enabled:     true,
 		},
 		{
 			Id:          primitive.NewObjectID(),
 			Key:         constants.SettingKeyNode,
 			Name:        "Node.js",
+			Cmd:         "npm",
 			Description: `Dependencies for Node.js environment`,
 			Enabled:     true,
 		},
@@ -203,13 +208,13 @@ func (svc *Service) handleStreamMessages() {
 		case constants.MessageCodeInsertLogs:
 			go svc.insertLogs(msg, msgData)
 		case constants.MessageCodeUpdatePython:
-			go svc.pythonSvc.updateDependencyList()
-		case constants.MessageCodeNotifyUpdatePython:
-			go svc.pythonSvc.notifyUpdateDependencyList(msg, msgData)
+			go svc.pythonSvc.updateDependencyList(msg, msgData)
 		case constants.MessageCodeSavePython:
 			go svc.pythonSvc._saveDependencyList(msg, msgData)
 		case constants.MessageCodeInstallPython:
 			go svc.pythonSvc.installDependency(msg, msgData)
+		case constants.MessageCodeUninstallPython:
+			go svc.pythonSvc.uninstallDependency(msg, msgData)
 		}
 	}
 }
@@ -275,6 +280,7 @@ func (svc *Service) updateTask(msg *grpc.StreamMessage, msgData entity.MessageDa
 	update := bson.M{
 		"$set": bson.M{
 			"status": taskMsg.Status,
+			"error":  taskMsg.Error,
 		},
 	}
 	if err := svc.colT.UpdateId(taskMsg.TaskId, update); err != nil {
@@ -373,11 +379,16 @@ func (svc *Service) _sendLogs(taskId primitive.ObjectID, lines []string) {
 	}
 }
 
-func (svc *Service) _sendTaskStatus(taskId primitive.ObjectID, status string) {
+func (svc *Service) _sendTaskStatus(taskId primitive.ObjectID, status string, err error) {
 	// logs message
 	logsMsg := &entity.TaskMessage{
 		TaskId: taskId,
 		Status: status,
+	}
+
+	// error
+	if err != nil {
+		logsMsg.Error = err.Error()
 	}
 
 	// data

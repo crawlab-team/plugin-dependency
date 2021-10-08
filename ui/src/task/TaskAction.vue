@@ -22,6 +22,8 @@ export default defineComponent({
         return 'primary';
       } else if (props.action === 'uninstall') {
         return 'danger';
+      } else if (props.action === 'upgrade') {
+        return 'primary';
       } else {
         return 'info';
       }
@@ -32,6 +34,8 @@ export default defineComponent({
         return ['fa', 'download'];
       } else if (props.action === 'uninstall') {
         return ['fa', 'trash-alt'];
+      } else if (props.action === 'upgrade') {
+        return ['fa', 'angle-up'];
       } else {
         return ['fa', 'question'];
       }

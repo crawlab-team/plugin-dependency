@@ -1,6 +1,6 @@
 <template>
   <cl-dialog
-      title="Install"
+      title="Uninstall"
       :visible="visible"
       width="640px"
       :confirm-loading="loading"
@@ -24,9 +24,6 @@
           <el-option value="selected-nodes" label="Selected Nodes"/>
         </el-select>
       </cl-form-item>
-      <cl-form-item label="Upgrade">
-        <cl-switch v-model="upgrade"/>
-      </cl-form-item>
       <cl-form-item v-if="mode === 'selected-nodes'" :span="4" label="Selected Nodes">
         <el-select v-model="nodeIds" multiple placeholder="Select Nodes">
           <el-option v-for="n in nodes" :key="n.key" :value="n._id" :label="n.name"/>
@@ -40,7 +37,7 @@
 import {defineComponent, ref} from 'vue';
 
 export default defineComponent({
-  name: 'DependencyPythonInstallForm',
+  name: 'DependencyPythonUninstallForm',
   props: {
     visible: {
       type: Boolean,
@@ -67,7 +64,6 @@ export default defineComponent({
   ],
   setup(props, {emit}) {
     const mode = ref('all');
-    const upgrade = ref(true);
     const nodeIds = ref([]);
 
     const reset = () => {
@@ -78,7 +74,6 @@ export default defineComponent({
     const onConfirm = () => {
       emit('confirm', {
         mode: mode.value,
-        upgrade: upgrade.value,
         nodeIds: nodeIds.value,
       });
       reset();
@@ -90,9 +85,8 @@ export default defineComponent({
     };
 
     return {
-      mode,
-      upgrade,
       nodeIds,
+      mode,
       onConfirm,
       onClose,
     };

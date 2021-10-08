@@ -44,14 +44,6 @@
       ],
       "children": [
         {
-          "path": "/dependencies/settings",
-          "title": "Settings",
-          "icon": [
-            "fa",
-            "cogs"
-          ]
-        },
-        {
           "path": "/dependencies/python",
           "title": "Python",
           "icon": [
@@ -65,6 +57,14 @@
           "icon": [
             "fab",
             "node-js"
+          ]
+        },
+        {
+          "path": "/dependencies/settings",
+          "title": "Settings",
+          "icon": [
+            "fa",
+            "cog"
           ]
         }
       ]

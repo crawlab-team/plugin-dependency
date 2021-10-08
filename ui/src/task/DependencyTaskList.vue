@@ -103,7 +103,7 @@ export default defineComponent({
         icon: ['fa', 'check-square'],
         width: '120',
         value: (row) => {
-          return h(ClTaskStatus, {status: row.status});
+          return h(ClTaskStatus, {status: row.status, error: row.error});
         },
       },
       {

@@ -11,6 +11,7 @@ replace (
 require (
 	github.com/PuerkitoBio/goquery v1.7.1
 	github.com/apex/log v1.9.0
+	github.com/blang/semver/v4 v4.0.0
 	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/crawlab-team/crawlab-core v0.6.0-beta.20210802.1344
 	github.com/crawlab-team/crawlab-db v0.1.1

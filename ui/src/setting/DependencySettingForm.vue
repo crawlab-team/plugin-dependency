@@ -12,8 +12,11 @@
     <cl-form-item :span="4" prop="description" label="Description">
       <el-input v-model="internalForm.description" type="textarea" disabled/>
     </cl-form-item>
+    <cl-form-item :span="4" prop="cmd" label="Command">
+      <el-input v-model="internalForm.cmd" placeholder="Command" @change="onChange"/>
+    </cl-form-item>
     <cl-form-item :span="4" prop="proxy" label="Proxy">
-      <el-input v-model="internalForm.proxy" placeholder="Proxy" @change="onProxyChange"/>
+      <el-input v-model="internalForm.proxy" placeholder="Proxy" @change="onChange"/>
     </cl-form-item>
   </cl-form>
 </template>
@@ -36,7 +39,7 @@ export default defineComponent({
   setup(props, {emit}) {
     const internalForm = ref({});
 
-    const onProxyChange = () => {
+    const onChange = () => {
       emit('change', internalForm.value);
     };
 
@@ -46,7 +49,7 @@ export default defineComponent({
 
     return {
       internalForm,
-      onProxyChange,
+      onChange,
     };
   },
 });

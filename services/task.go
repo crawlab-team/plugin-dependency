@@ -3,7 +3,6 @@ package services
 import (
 	"github.com/crawlab-team/crawlab-core/controllers"
 	mongo2 "github.com/crawlab-team/crawlab-db/mongo"
-	"github.com/crawlab-team/plugin-dependency/constants"
 	"github.com/crawlab-team/plugin-dependency/models"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -24,7 +23,6 @@ func (svc *TaskService) Init() {
 func (svc *TaskService) getList(c *gin.Context) {
 	// filter
 	query, _ := controllers.GetFilterQuery(c)
-	query["type"] = constants.DependencyTypePython
 
 	// all
 	all, _ := strconv.ParseBool(c.Query("all"))

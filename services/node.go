@@ -1,11 +1,9 @@
 package services
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"github.com/crawlab-team/crawlab-core/controllers"
 	"github.com/crawlab-team/go-trace"
 	"github.com/crawlab-team/plugin-dependency/constants"
@@ -17,23 +15,21 @@ import (
 	mongo2 "go.mongodb.org/mongo-driver/mongo"
 	"net/url"
 	"os/exec"
-	"strconv"
-	"strings"
 	"time"
 )
 
-type PythonService struct {
+type NodeService struct {
 	*baseService
 }
 
-func (svc *PythonService) Init() {
-	svc.api.GET("/python", svc.getList)
-	svc.api.POST("/python/update", svc.update)
-	svc.api.POST("/python/install", svc.install)
-	svc.api.POST("/python/uninstall", svc.uninstall)
+func (svc *NodeService) Init() {
+	svc.api.GET("/node", svc.getList)
+	svc.api.POST("/node/update", svc.update)
+	svc.api.POST("/node/install", svc.install)
+	svc.api.POST("/node/uninstall", svc.uninstall)
 }
 
-func (svc *PythonService) GetRepoList(c *gin.Context) {
+func (svc *NodeService) GetRepoList(c *gin.Context) {
 	// query
 	query := c.Query("query")
 	pagination := controllers.MustGetPagination(c)
@@ -54,7 +50,7 @@ func (svc *PythonService) GetRepoList(c *gin.Context) {
 	ua := req.Header{"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"}
 
 	// request url
-	requestUrl := fmt.Sprintf("https://pypi.org/search?page=%d&q=%s", pagination.Page, url.QueryEscape(query))
+	requestUrl := fmt.Sprintf("https://api.npms.io/v2/search?from=%d&q=%s&size=20", (pagination.Page-1)*pagination.Size, url.QueryEscape(query))
 
 	// perform request
 	res, err := reqSession.Get(requestUrl, ua)
@@ -68,43 +64,33 @@ func (svc *PythonService) GetRepoList(c *gin.Context) {
 		return
 	}
 
-	// response bytes
-	data, err := res.ToBytes()
-	if err != nil {
+	// response
+	var npmRes entity.NpmResponseList
+	if err := res.ToJSON(&npmRes); err != nil {
 		controllers.HandleErrorInternalServerError(c, err)
 		return
 	}
-	buf := bytes.NewBuffer(data)
 
-	// parse html
-	doc, err := goquery.NewDocumentFromReader(buf)
-	if err != nil {
-		controllers.HandleErrorInternalServerError(c, err)
+	// empty results
+	if npmRes.Total == 0 {
+		controllers.HandleSuccess(c)
 		return
 	}
 
 	// dependencies
 	var deps []models.Dependency
 	var depNames []string
-	doc.Find(".left-layout__main > form ul > li").Each(func(i int, s *goquery.Selection) {
+	for _, r := range npmRes.Results {
 		d := models.Dependency{
-			Name:          s.Find(".package-snippet__name").Text(),
-			LatestVersion: s.Find(".package-snippet__version").Text(),
+			Name:          r.Package.Name,
+			LatestVersion: r.Package.Version,
 		}
 		deps = append(deps, d)
 		depNames = append(depNames, d.Name)
-	})
+	}
 
 	// total
-	totalStr := doc.Find(".left-layout__main .split-layout p > strong").Text()
-	totalStr = strings.ReplaceAll(totalStr, ",", "")
-	total, _ := strconv.Atoi(totalStr)
-
-	// empty results
-	if total == 0 {
-		controllers.HandleSuccess(c)
-		return
-	}
+	total := npmRes.Total
 
 	// dependencies in db
 	var depsResults []entity.DependencyResult
@@ -112,7 +98,7 @@ func (svc *PythonService) GetRepoList(c *gin.Context) {
 		{{
 			"$match",
 			bson.M{
-				"type": constants.DependencyTypePython,
+				"type": constants.DependencyTypeNode,
 				"name": bson.M{
 					"$in": depNames,
 				},
@@ -161,46 +147,50 @@ func (svc *PythonService) GetRepoList(c *gin.Context) {
 	controllers.HandleSuccessWithListData(c, deps, total)
 }
 
-func (svc *PythonService) GetDependencies(params entity.UpdateParams) (deps []models.Dependency, err error) {
-	cmd := exec.Command(params.Cmd, "list", "--format", "json")
+func (svc *NodeService) GetDependencies(params entity.UpdateParams) (deps []models.Dependency, err error) {
+	cmd := exec.Command(params.Cmd, "list", "-g", "--json", "--depth", "0")
 	data, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
-	var _deps []models.Dependency
-	if err := json.Unmarshal(data, &_deps); err != nil {
+	var res entity.NpmListResult
+	if err := json.Unmarshal(data, &res); err != nil {
 		return nil, err
 	}
-	for _, d := range _deps {
-		if strings.HasPrefix(d.Name, "-") {
-			continue
+	for name, p := range res.Dependencies {
+		d := models.Dependency{
+			Name:    name,
+			Version: p.Version,
 		}
-		d.Type = constants.DependencyTypePython
+		d.Type = constants.DependencyTypeNode
 		deps = append(deps, d)
 	}
 	return deps, nil
 }
 
-func (svc *PythonService) InstallDependencies(params entity.InstallParams) (err error) {
+func (svc *NodeService) InstallDependencies(params entity.InstallParams) (err error) {
 	// arguments
 	var args []string
 
 	// install
 	args = append(args, "install")
 
+	// global
+	args = append(args, "-g")
+
 	// proxy
 	if params.Proxy != "" {
-		args = append(args, "-i")
+		args = append(args, "--registry")
 		args = append(args, params.Proxy)
-	}
-
-	// upgrade
-	if params.Upgrade {
-		args = append(args, "-U")
 	}
 
 	// dependency names
 	for _, depName := range params.Names {
+		// upgrade
+		if params.Upgrade {
+			depName = depName + "@latest"
+		}
+
 		args = append(args, depName)
 	}
 
@@ -223,13 +213,13 @@ func (svc *PythonService) InstallDependencies(params entity.InstallParams) (err 
 	return nil
 }
 
-func (svc *PythonService) UninstallDependencies(params entity.UninstallParams) (err error) {
+func (svc *NodeService) UninstallDependencies(params entity.UninstallParams) (err error) {
 	// arguments
 	var args []string
 
 	// uninstall
 	args = append(args, "uninstall")
-	args = append(args, "-y")
+	args = append(args, "-g")
 
 	// dependency names
 	for _, depName := range params.Names {
@@ -255,7 +245,7 @@ func (svc *PythonService) UninstallDependencies(params entity.UninstallParams) (
 	return nil
 }
 
-func (svc *PythonService) GetLatestVersion(dep models.Dependency) (v string, err error) {
+func (svc *NodeService) GetLatestVersion(dep models.Dependency) (v string, err error) {
 	// not exists in cache, request from pypi
 	reqSession := req.New()
 
@@ -266,7 +256,7 @@ func (svc *PythonService) GetLatestVersion(dep models.Dependency) (v string, err
 	ua := req.Header{"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36"}
 
 	// request url
-	requestUrl := fmt.Sprintf("https://pypi.org/project/%s/", dep.Name)
+	requestUrl := fmt.Sprintf("https://api.npms.io/v2/package/%s", dep.Name)
 
 	// perform request
 	res, err := reqSession.Get(requestUrl, ua)
@@ -274,37 +264,29 @@ func (svc *PythonService) GetLatestVersion(dep models.Dependency) (v string, err
 		return "", trace.TraceError(err)
 	}
 
-	// response bytes
-	data, err := res.ToBytes()
-	if err != nil {
-		return "", trace.TraceError(err)
-	}
-	buf := bytes.NewBuffer(data)
-
-	// parse html
-	doc, err := goquery.NewDocumentFromReader(buf)
-	if err != nil {
+	// response
+	var npmRes entity.NpmResponseDetail
+	if err := res.ToJSON(&npmRes); err != nil {
 		return "", trace.TraceError(err)
 	}
 
-	// latest version
-	v = doc.Find(".release-timeline .release--current .release__version").Text()
-	v = strings.TrimSpace(v)
+	// version
+	v = npmRes.Collected.Metadata.Version
 
 	return v, nil
 }
 
-func NewPythonService(parent *Service) (svc *PythonService) {
-	svc = &PythonService{}
+func NewNodeService(parent *Service) (svc *NodeService) {
+	svc = &NodeService{}
 	baseSvc := newBaseService(
 		svc,
 		parent,
-		constants.DependencyTypePython,
+		constants.DependencyTypeNode,
 		entity.MessageCodes{
-			Update:    constants.MessageCodePythonUpdate,
-			Save:      constants.MessageCodePythonSave,
-			Install:   constants.MessageCodePythonInstall,
-			Uninstall: constants.MessageCodePythonUninstall,
+			Update:    constants.MessageCodeNodeUpdate,
+			Save:      constants.MessageCodeNodeSave,
+			Install:   constants.MessageCodeNodeInstall,
+			Uninstall: constants.MessageCodeNodeUninstall,
 		},
 	)
 	svc.baseService = baseSvc

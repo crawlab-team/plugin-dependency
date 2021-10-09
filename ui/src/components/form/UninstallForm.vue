@@ -37,7 +37,7 @@
 import {defineComponent, ref} from 'vue';
 
 export default defineComponent({
-  name: 'DependencyPythonUninstallForm',
+  name: 'UninstallForm',
   props: {
     visible: {
       type: Boolean,

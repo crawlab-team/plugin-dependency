@@ -43,6 +43,10 @@ export default defineComponent({
       emit('change', internalForm.value);
     };
 
+    watch(() => props.form, () => {
+      internalForm.value = {...props.form};
+    });
+
     onBeforeMount(() => {
       internalForm.value = {...props.form};
     });

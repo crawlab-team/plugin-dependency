@@ -1,33 +1,134 @@
 <template>
   <cl-list-layout
+      v-loading="loading"
+      class="dependency-list"
       :table-columns="tableColumns"
       :table-data="tableData"
       :table-total="tableTotal"
       :table-pagination="tablePagination"
       :action-functions="actionFunctions"
-      :nav-actions="navActions"
+      :visible-buttons="['export', 'customize-columns']"
+      table-pagination-layout="total, prev, pager, next"
+      :table-actions-prefix="tableActionsPrefix"
+      @select="onSelect"
   >
+    <template #nav-actions-extra>
+      <div class="top-bar">
+        <div class="top-bar-left">
+          <el-input
+              class="search-query"
+              v-model="searchQuery"
+              size="small"
+              placeholder="Search dependencies"
+              prefix-icon="el-icon-search"
+              clearable
+              @keyup.enter="onSearch"
+              @clear="onSearchClear"
+          />
+          <cl-label-button
+              class="search-btn"
+              size="small"
+              :icon="['fa', 'search']"
+              label="Search"
+              :disabled="!installed ? !searchQuery : false"
+              @click="onSearch"
+          />
+          <el-radio-group
+              class="view-mode"
+              v-model="viewMode"
+              size="small"
+              @change="onInstalledChange"
+          >
+            <el-radio-button label="installed">
+              <font-awesome-icon :icon="['fa', 'check']" style="margin-right: 5px"/>
+              Installed
+            </el-radio-button>
+            <el-radio-button label="installable">
+              <font-awesome-icon :icon="['fab', 'node-js']" style="margin-right: 5px"/>
+              Installable
+            </el-radio-button>
+          </el-radio-group>
+          <cl-fa-icon-button
+              class="update-btn"
+              size="small"
+              type="primary"
+              :tooltip="updateTooltip"
+              :icon="updateInstalledLoading ? ['fa', 'spinner'] : ['fa', 'sync']"
+              :spin="updateInstalledLoading"
+              :disabled="updateInstalledLoading"
+              @click="onUpdate"
+          />
+          <cl-button
+              class="tasks-btn"
+              size="small"
+              :type="runningTaskTotal === 0 ? 'primary' : 'warning'"
+              @click="() => onDialogOpen('tasks')"
+          >
+            <font-awesome-icon
+                :icon="runningTaskTotal === 0 ? ['fa', 'tasks'] : ['fa', 'spinner']"
+                :spin="runningTaskTotal > 0"
+                style="margin-right: 5px"
+            />
+            {{ runningTaskTotal === 0 ? `Tasks` : `Tasks (${runningTaskTotal})` }}
+          </cl-button>
+        </div>
+        <el-pagination
+            :current-page="tablePagination.page"
+            :page-size="tablePagination.pageSize"
+            :total="tableTotal"
+            class="pagination"
+            layout="total, prev, pager, next"
+            @current-change="(page) => tablePagination.page = page"
+        />
+      </div>
+    </template>
     <template #extra>
-      <cl-create-edit-dialog
-          :visible="dialogVisible"
+      <InstallForm
+          :visible="dialogVisible.install"
+          :nodes="allNodes"
+          :names="installForm.names"
+          @confirm="onInstall"
+          @close="() => onDialogClose('install')"
+      />
+      <UninstallForm
+          :visible="dialogVisible.uninstall"
+          :nodes="uninstallForm.nodes"
+          :names="uninstallForm.names"
+          @confirm="onUninstall"
+          @close="() => onDialogClose('uninstall')"
+      />
+      <cl-dialog
+          title="Tasks"
+          :visible="dialogVisible.tasks"
           width="1024px"
-          no-batch
-          @close="onDialogClose"
+          @confirm="() => onDialogClose('tasks')"
+          @close="() => onDialogClose('tasks')"
       >
-      </cl-create-edit-dialog>
+        <DependencyTaskList
+            v-if="dialogVisible.tasks"
+            type="node"
+        />
+      </cl-dialog>
     </template>
   </cl-list-layout>
 </template>
 
 <script lang="ts">
-import {defineComponent, ref, h} from 'vue';
-import {useRouter} from 'vue-router';
-import {useRequest, ClSwitch, ClNavLink} from 'crawlab-ui';
+import {computed, defineComponent, h, onBeforeUnmount, onMounted, ref} from 'vue';
+import {ClNavLink, ClNodeType, ClTag, useRequest} from 'crawlab-ui';
+import {ElMessage} from 'element-plus';
+import {useStore} from 'vuex';
+import InstallForm from '../components/form/InstallForm.vue';
+import UninstallForm from '../components/form/UninstallForm.vue';
+import DependencyTaskList from '../task/DependencyTaskList.vue';
 
-const endpoint = '/plugin-proxy/dependency/settings';
+const endpoint = '/plugin-proxy/dependency/node';
+const endpointS = '/plugin-proxy/dependency/settings';
+const endpointT = '/plugin-proxy/dependency/tasks';
 
 const {
-  getList,
+  get,
+  getList: getList_,
   post,
 } = useRequest();
 
@@ -40,91 +141,228 @@ const getDefaultForm = () => {
 
 export default defineComponent({
   name: 'DependencyNode',
-  components: {},
+  components: {
+    DependencyTaskList,
+    InstallForm,
+    UninstallForm,
+  },
   setup() {
-    const router = useRouter();
+    const store = useStore();
 
-    const tableColumns = [
-      {
-        key: 'name',
-        label: 'Name',
-        icon: ['fa', 'font'],
-        width: '150',
-        value: (row) => h(ClNavLink, {
-          label: row.name,
-          path: `/notifications/${row._id}`,
-        }),
-      },
-      {
-        key: 'type',
-        label: 'Type',
-        icon: ['fa', 'list'],
-        width: '120',
-      },
-      {
-        key: 'enabled',
-        label: 'Enabled',
-        icon: ['fa', 'toggle-on'],
-        width: '120',
-        value: (row) => h(ClSwitch, {
-          modelValue: row.enabled,
-          onChange: async (value) => {
-            if (!row._id) return;
-            if (value.enabled) {
-              await post(`${endpoint}/${row._id}/disable`);
+    const viewMode = ref('installed');
+
+    const installed = computed(() => viewMode.value === 'installed');
+
+    const allNodeListSelectOptions = computed(() => store.getters[`node/allListSelectOptions`]);
+
+    const allNodeDict = computed(() => store.getters[`node/allDict`]);
+
+    const allNodes = computed(() => store.state.node.allList);
+
+    const runningTaskList = ref([]);
+    const runningTaskTotal = ref(0);
+
+    const getRunningTaskList = async () => {
+      const res = await getList_(`${endpointT}`, {
+        all: true,
+        conditions: [
+          {
+            key: 'type',
+            op: 'eq',
+            value: 'node',
+          },
+          {
+            key: 'status',
+            op: 'eq',
+            value: 'running',
+          },
+        ]
+      });
+      const {data, total} = res;
+      runningTaskList.value = data || [];
+      runningTaskTotal.value = total || 0;
+    };
+
+    let runningTaskHandle;
+
+    onMounted(() => {
+      getRunningTaskList();
+      runningTaskHandle = setInterval(getRunningTaskList, 5000);
+    });
+
+    onBeforeUnmount(() => {
+      clearInterval(runningTaskHandle);
+    });
+
+    const setting = ref({});
+
+    const getSetting = async () => {
+      const res = await get(`${endpointS}`, {
+        conditions: [{
+          key: 'key',
+          op: 'eq',
+          value: 'node',
+        }],
+      });
+      if (res.data && res.data.length > 0) {
+        setting.value = res.data[0];
+      }
+    };
+
+    onMounted(getSetting);
+
+    const updateTooltip = computed(() => {
+      return `Click to update dependencies`;
+    });
+
+    const installForm = ref({
+      names: [],
+    });
+
+    const uninstallForm = ref({
+      nodes: [],
+      names: [],
+    });
+
+    const upgradeForm = ref({
+      nodes: [],
+      names: [],
+    });
+
+    const isInstallable = (dep) => {
+      if (dep.upgradable) return true;
+      let node_ids = [];
+      if (installed.value) {
+        node_ids = dep.node_ids || [];
+      } else if (dep.result) {
+        node_ids = dep.result.node_ids || [];
+      } else {
+        return false;
+      }
+      return node_ids.length < allNodes.value.length;
+    };
+
+    const isUninstallable = (dep) => {
+      let node_ids = [];
+      if (installed.value) {
+        node_ids = dep.node_ids || [];
+      } else if (dep.result) {
+        node_ids = dep.result.node_ids || [];
+      } else {
+        return false;
+      }
+      return node_ids.length > 0;
+    };
+
+    const getNodes = (dep) => {
+      let node_ids = [];
+      if (installed.value) {
+        node_ids = dep.node_ids || [];
+      } else if (dep.result) {
+        node_ids = dep.result.node_ids || [];
+      } else {
+        return [];
+      }
+      return node_ids.map(id => allNodeDict.value.get(id));
+    };
+
+    const tableColumns = computed(() => {
+      return [
+        {
+          key: 'name',
+          label: 'Name',
+          icon: ['fa', 'font'],
+          width: '200',
+          value: (row) => h(ClNavLink, {
+            label: row.name,
+            path: `https://npmjs.com/package/${row.name}`,
+            external: true,
+          }),
+        },
+        {
+          key: 'latest_version',
+          label: 'Latest Version',
+          icon: ['fa', 'tag'],
+          width: '200',
+        },
+        {
+          key: 'versions',
+          label: 'Installed Version',
+          icon: ['fa', 'tag'],
+          width: '200',
+          value: (row) => {
+            const res = [];
+            let versions = [];
+            if (installed.value) {
+              if (!row.versions) return;
+              versions = row.versions;
             } else {
-              await post(`${endpoint}/${row._id}/enable`);
+              if (!row.result || !row.result.versions) return;
+              versions = row.result.versions;
             }
+            res.push(h('span', {style: 'margin-right: 5px'}, versions.join(', ')));
+            if (row.upgradable) {
+              res.push(h(ClTag, {
+                type: 'primary',
+                effect: 'light',
+                size: 'mini',
+                tooltip: 'Upgradable',
+                icon: ['fa', 'arrow-up'],
+              }));
+            }
+            return res;
           },
-        }),
-      },
-      {
-        key: 'description',
-        label: 'Description',
-        icon: ['fa', 'comment-alt'],
-        width: 'auto',
-      },
-      {
-        key: 'actions',
-        label: 'Actions',
-        fixed: 'right',
-        width: '200',
-        buttons: [
-          {
-            type: 'primary',
-            icon: ['fa', 'search'],
-            tooltip: 'View',
-            onClick: (row) => {
-              router.push(`/notifications/${row._id}`);
+        },
+        {
+          key: 'node_ids',
+          label: 'Installed Nodes',
+          icon: ['fa', 'server'],
+          width: '580',
+          value: (row) => {
+            const result = (installed.value ? row : row.result) || {};
+            const node_ids = result.node_ids || [];
+            return allNodes.value
+                .filter(n => node_ids.includes(n._id))
+                .map(n => {
+                  return h(ClNodeType, {
+                    isMaster: n.is_master,
+                    label: n.name,
+                  });
+                });
+          },
+        },
+        {
+          key: 'actions',
+          label: 'Actions',
+          fixed: 'right',
+          width: '200',
+          buttons: (row) => [
+            {
+              type: 'primary',
+              icon: ['fa', 'download'],
+              tooltip: row.upgradable ? 'Install and upgrade' : 'Install',
+              disabled: (row) => !isInstallable(row),
+              onClick: async (row) => {
+                installForm.value.names = [row.name];
+                dialogVisible.value.install = true;
+              },
             },
-          },
-          // {
-          //   type: 'info',
-          //   size: 'mini',
-          //   icon: ['fa', 'clone'],
-          //   tooltip: 'Clone',
-          //   onClick: (row) => {
-          //     console.log('clone', row);
-          //   }
-          // },
-          {
-            type: 'danger',
-            size: 'mini',
-            icon: ['fa', 'trash-alt'],
-            tooltip: 'Delete',
-            disabled: (row) => !!row.active,
-            onClick: async (row) => {
-              // const res = await ElMessageBox.confirm('Are you sure to delete?', 'Delete');
-              // if (res) {
-              // await deleteById(row._id as string);
-              // }
-              // await getList();
+            {
+              type: 'danger',
+              icon: ['fa', 'trash-alt'],
+              tooltip: 'Uninstall',
+              disabled: (row) => !isUninstallable(row),
+              onClick: async (row) => {
+                uninstallForm.value.nodes = getNodes(row);
+                uninstallForm.value.names = [row.name];
+                dialogVisible.value.uninstall = true;
+              },
             },
-          },
-        ],
-        disableTransfer: true,
-      },
-    ];
+          ],
+          disableTransfer: true,
+        },
+      ];
+    });
 
     const tableData = ref([]);
 
@@ -135,65 +373,238 @@ export default defineComponent({
 
     const tableTotal = ref(0);
 
+    const tableActionsPrefix = ref([
+      {
+        buttonType: 'fa-icon',
+        label: 'Install',
+        tooltip: 'Install',
+        icon: ['fa', 'download'],
+        type: 'primary',
+        disabled: () => installForm.value.names.length === 0,
+        onClick: () => {
+          dialogVisible.value.install = true;
+        },
+      },
+      {
+        buttonType: 'fa-icon',
+        label: 'Uninstall',
+        tooltip: 'Uninstall',
+        icon: ['fa', 'trash-alt'],
+        type: 'danger',
+        disabled: () => !installed.value || uninstallForm.value.names.length === 0,
+        onClick: () => {
+          dialogVisible.value.uninstall = true;
+        },
+      }
+    ]);
+
+    const loading = ref(false);
+
+    const updateInstalledLoading = ref(false);
+
+    const getList = async () => {
+      loading.value = true;
+      try {
+        if (!searchQuery.value && !installed.value) {
+          tableData.value = [];
+          tableTotal.value = 0;
+          return;
+        }
+        const params = {
+          ...tablePagination.value,
+          query: searchQuery.value,
+          installed: installed.value,
+        };
+        const res = await getList_(`${endpoint}`, params);
+        if (!res) {
+          tableData.value = [];
+          tableTotal.value = 0;
+        }
+        const {data, total} = res;
+        tableData.value = data;
+        tableTotal.value = total;
+      } catch (e) {
+        console.error(e);
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const update = async () => {
+      updateInstalledLoading.value = true;
+      try {
+        await post(`${endpoint}/update`);
+      } finally {
+        updateInstalledLoading.value = false;
+        await getList();
+      }
+    };
+
     const actionFunctions = ref({
-      getList: async () => {
-      //   const res = await getList(`${endpoint}`, {
-      //     ...tablePagination.value,
-      //   });
-      //   if (!res) {
-      //     tableData.value = [];
-      //     tableTotal.value = 0;
-      //   }
-      //   const {data, total} = res;
-      //   tableData.value = data;
-      //   tableTotal.value = total;
+      getList,
+      setPagination: (pagination) => {
+        tablePagination.value = {...pagination};
       },
     });
 
+    const searchQuery = ref();
 
     const form = ref(getDefaultForm());
 
-    const dialogVisible = ref(false);
+    const dialogVisible = ref({
+      install: false,
+      uninstall: false,
+      tasks: false,
+    });
 
-    const navActions = [
-      {
-        name: 'common',
-        children: [
-          {
-            buttonType: 'label',
-            label: 'New Dependency',
-            tooltip: 'New Dependency',
-            icon: ['fa', 'plus'],
-            type: 'success',
-            onClick: () => {
-              form.value = getDefaultForm();
-              dialogVisible.value = true;
-            }
-          }
-        ]
-      }
-    ];
+    const navActions = [];
 
-    const onDialogClose = () => {
-      dialogVisible.value = false;
-      form.value = getDefaultForm();
+    const resetForms = () => {
+      installForm.value = {
+        names: [],
+      };
+      uninstallForm.value = {
+        nodes: [],
+        names: [],
+      };
     };
+
+    const onDialogOpen = (key) => {
+      dialogVisible.value[key] = true;
+    };
+
+    const onDialogClose = (key) => {
+      dialogVisible.value[key] = false;
+      resetForms();
+    };
+
+    const onSearch = async () => {
+      await actionFunctions.value.getList();
+    };
+
+    const onSearchClear = async () => {
+      await actionFunctions.value.getList();
+    };
+
+    const onUpdate = async () => {
+      await update();
+    };
+
+    const onInstalledChange = async () => {
+      await actionFunctions.value.getList();
+    };
+
+    const onFilterChange = async () => {
+      await actionFunctions.value.getList();
+    };
+
+    const onSelect = (rows) => {
+      installForm.value.names = rows.map(d => d.name);
+      uninstallForm.value.names = rows.map(d => d.name);
+    };
+
+    const onInstall = async ({mode, upgrade, nodeIds}) => {
+      const data = {
+        mode,
+        upgrade,
+        names: installForm.value.names,
+      };
+      if (data.mode === 'all') {
+        data['node_id'] = nodeIds;
+      }
+      await post(`${endpoint}/install`, data);
+      await ElMessage.success('Started to install dependencies');
+      await getRunningTaskList();
+      onDialogClose('install');
+    };
+
+    const onUninstall = async ({mode, nodeIds}) => {
+      const data = {
+        names: uninstallForm.value.names,
+        mode,
+      };
+      if (data.mode === 'all') {
+        data['node_id'] = nodeIds;
+      }
+      await post(`${endpoint}/uninstall`, data);
+      await ElMessage.success('Started to uninstall dependencies');
+      await getRunningTaskList();
+      onDialogClose('uninstall');
+    };
+
+    onMounted(() => store.dispatch(`node/getAllList`));
 
     return {
       tableColumns,
       tableData,
       tableTotal,
       tablePagination,
+      tableActionsPrefix,
       actionFunctions,
       navActions,
       dialogVisible,
+      searchQuery,
       form,
+      viewMode,
+      installed,
+      loading,
+      updateInstalledLoading,
+      allNodeListSelectOptions,
+      allNodes,
+      onDialogOpen,
       onDialogClose,
+      onSearch,
+      onSearchClear,
+      onUpdate,
+      onInstalledChange,
+      onFilterChange,
+      onSelect,
+      installForm,
+      uninstallForm,
+      onInstall,
+      onUninstall,
+      setting,
+      getSetting,
+      updateTooltip,
+      runningTaskList,
+      runningTaskTotal,
+      getRunningTaskList,
     };
   },
 });
 </script>
 
 <style scoped>
+.search-query {
+  width: 300px;
+  margin-right: 10px;
+}
 
+.top-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+
+.top-bar >>> .search-btn {
+  margin-right: 0;
+}
+
+.top-bar >>> .update-btn,
+.top-bar >>> .view-mode,
+.top-bar >>> .tasks-btn {
+  margin-left: 20px;
+  margin-right: 0;
+}
+
+.top-bar .pagination {
+  /*width: 100%;*/
+  text-align: right;
+}
+
+.dependency-list >>> .node-type {
+  margin-right: 10px;
+}
 </style>

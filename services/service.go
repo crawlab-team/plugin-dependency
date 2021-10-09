@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/crawlab-team/crawlab-core/interfaces"
+	models2 "github.com/crawlab-team/crawlab-core/models/models"
 	"github.com/crawlab-team/crawlab-core/node/config"
 	mongo2 "github.com/crawlab-team/crawlab-db/mongo"
 	grpc "github.com/crawlab-team/crawlab-grpc"
@@ -44,6 +45,7 @@ type Service struct {
 	settingSvc *SettingService
 	taskSvc    *TaskService
 	pythonSvc  *PythonService
+	nodeSvc    *NodeService
 }
 
 func (svc *Service) Init() (err error) {
@@ -51,6 +53,7 @@ func (svc *Service) Init() (err error) {
 	svc.settingSvc.Init()
 	svc.taskSvc.Init()
 	svc.pythonSvc.Init()
+	svc.nodeSvc.Init()
 
 	return nil
 }
@@ -111,7 +114,7 @@ func (svc *Service) initData() (err error) {
 	settings := []models.Setting{
 		{
 			Id:          primitive.NewObjectID(),
-			Key:         constants.SettingKeyPython,
+			Key:         constants.DependencyTypePython,
 			Name:        "Python",
 			Description: `Dependencies for Python environment`,
 			Cmd:         "pip",
@@ -119,7 +122,7 @@ func (svc *Service) initData() (err error) {
 		},
 		{
 			Id:          primitive.NewObjectID(),
-			Key:         constants.SettingKeyNode,
+			Key:         constants.DependencyTypeNode,
 			Name:        "Node.js",
 			Cmd:         "npm",
 			Description: `Dependencies for Node.js environment`,
@@ -207,14 +210,24 @@ func (svc *Service) handleStreamMessages() {
 			go svc.updateTask(msg, msgData)
 		case constants.MessageCodeInsertLogs:
 			go svc.insertLogs(msg, msgData)
-		case constants.MessageCodeUpdatePython:
+
+		case constants.MessageCodePythonUpdate:
 			go svc.pythonSvc.updateDependencyList(msg, msgData)
-		case constants.MessageCodeSavePython:
+		case constants.MessageCodePythonSave:
 			go svc.pythonSvc._saveDependencyList(msg, msgData)
-		case constants.MessageCodeInstallPython:
+		case constants.MessageCodePythonInstall:
 			go svc.pythonSvc.installDependency(msg, msgData)
-		case constants.MessageCodeUninstallPython:
+		case constants.MessageCodePythonUninstall:
 			go svc.pythonSvc.uninstallDependency(msg, msgData)
+
+		case constants.MessageCodeNodeUpdate:
+			go svc.nodeSvc.updateDependencyList(msg, msgData)
+		case constants.MessageCodeNodeSave:
+			go svc.nodeSvc._saveDependencyList(msg, msgData)
+		case constants.MessageCodeNodeInstall:
+			go svc.nodeSvc.installDependency(msg, msgData)
+		case constants.MessageCodeNodeUninstall:
+			go svc.nodeSvc.uninstallDependency(msg, msgData)
 		}
 	}
 }
@@ -417,6 +430,83 @@ func (svc *Service) _sendTaskStatus(taskId primitive.ObjectID, status string, er
 	}
 }
 
+func (svc *Service) _getNodes(query bson.M) (nodes []models2.Node, err error) {
+	// node model service
+	nodeModelSvc, err := svc.GetModelService().NewBaseServiceDelegate(interfaces.ModelIdNode)
+	if err != nil {
+		return nil, err
+	}
+
+	// nodes
+	list, err := nodeModelSvc.GetList(query, nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range list.Values() {
+		n, ok := d.(models2.Node)
+		if !ok {
+			return nil, errors.New("invalid type")
+		}
+		nodes = append(nodes, n)
+	}
+
+	return nodes, nil
+}
+
+func (svc *Service) _updateDependencyList(
+	msg *grpc.StreamMessage,
+	msgData entity.MessageData,
+	msgSaveCode string,
+	getDependenciesFunc func(params entity.UpdateParams) (deps []models.Dependency, err error),
+) {
+	// params
+	var params entity.UpdateParams
+	if err := json.Unmarshal(msgData.Data, &params); err != nil {
+		trace.PrintError(err)
+		return
+	}
+
+	// installed dependencies
+	deps, err := getDependenciesFunc(params)
+	if err != nil {
+		trace.PrintError(err)
+		return
+	}
+
+	// data
+	data, err := json.Marshal(deps)
+	if err != nil {
+		trace.PrintError(err)
+		return
+	}
+
+	// message data
+	msgDataObj := &entity.MessageData{
+		Code: msgSaveCode,
+		Data: data,
+	}
+	msgDataBytes, err := json.Marshal(msgDataObj)
+	if err != nil {
+		trace.PrintError(err)
+		return
+	}
+
+	// stream message
+	msg = &grpc.StreamMessage{
+		Code:    grpc.StreamMessageCode_SEND,
+		NodeKey: svc.currentNode.GetKey(),
+		From:    "plugin:" + svc.currentNode.GetKey(),
+		To:      "plugin:" + svc.masterNode.GetKey(),
+		Data:    msgDataBytes,
+	}
+
+	// send message
+	if err := svc.msgStream.Send(msg); err != nil {
+		trace.PrintError(err)
+		return
+	}
+}
+
 func NewService() *Service {
 	// service
 	svc := &Service{
@@ -444,6 +534,7 @@ func NewService() *Service {
 	svc.settingSvc = NewSettingService(svc)
 	svc.taskSvc = NewTaskService(svc)
 	svc.pythonSvc = NewPythonService(svc)
+	svc.nodeSvc = NewNodeService(svc)
 
 	// initialize
 	if err := svc.Init(); err != nil {

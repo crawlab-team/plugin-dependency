@@ -40,7 +40,7 @@
 import {defineComponent, ref} from 'vue';
 
 export default defineComponent({
-  name: 'DependencyPythonInstallForm',
+  name: 'InstallForm',
   props: {
     visible: {
       type: Boolean,

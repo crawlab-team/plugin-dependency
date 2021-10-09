@@ -83,14 +83,14 @@
       </div>
     </template>
     <template #extra>
-      <DependencyPythonInstallForm
+      <InstallForm
           :visible="dialogVisible.install"
           :nodes="allNodes"
           :names="installForm.names"
           @confirm="onInstall"
           @close="() => onDialogClose('install')"
       />
-      <DependencyPythonUninstallForm
+      <UninstallForm
           :visible="dialogVisible.uninstall"
           :nodes="uninstallForm.nodes"
           :names="uninstallForm.names"
@@ -118,8 +118,8 @@ import {computed, defineComponent, h, onBeforeUnmount, onMounted, ref} from 'vue
 import {ClNavLink, ClNodeType, ClTag, useRequest} from 'crawlab-ui';
 import {ElMessage} from 'element-plus';
 import {useStore} from 'vuex';
-import DependencyPythonInstallForm from './DependencyPythonInstallForm.vue';
-import DependencyPythonUninstallForm from './DependencyPythonUninstallForm.vue';
+import InstallForm from '../components/form/InstallForm.vue';
+import UninstallForm from '../components/form/UninstallForm.vue';
 import DependencyTaskList from '../task/DependencyTaskList.vue';
 
 const endpoint = '/plugin-proxy/dependency/python';
@@ -141,7 +141,11 @@ const getDefaultForm = () => {
 
 export default defineComponent({
   name: 'DependencyPython',
-  components: {DependencyTaskList, DependencyPythonUninstallForm, DependencyPythonInstallForm},
+  components: {
+    DependencyTaskList,
+    InstallForm,
+    UninstallForm,
+  },
   setup() {
     const store = useStore();
 

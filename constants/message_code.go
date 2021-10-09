@@ -1,9 +1,20 @@
 package constants
 
-const MessageCodeUpdatePython = "update-python"
-const MessageCodeSavePython = "save-python"
-const MessageCodeInstallPython = "install-python"
-const MessageCodeUninstallPython = "uninstall-python"
+const (
+	MessageCodePythonUpdate    = "update-python"
+	MessageCodePythonSave      = "save-python"
+	MessageCodePythonInstall   = "install-python"
+	MessageCodePythonUninstall = "uninstall-python"
+)
 
-const MessageCodeUpdateTask = "update-task"
-const MessageCodeInsertLogs = "insert-logs"
+const (
+	MessageCodeNodeUpdate    = "update-node"
+	MessageCodeNodeSave      = "save-node"
+	MessageCodeNodeInstall   = "install-node"
+	MessageCodeNodeUninstall = "uninstall-node"
+)
+
+const (
+	MessageCodeUpdateTask = "update-task"
+	MessageCodeInsertLogs = "insert-logs"
+)

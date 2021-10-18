@@ -46,6 +46,7 @@ type Service struct {
 	taskSvc    *TaskService
 	pythonSvc  *PythonService
 	nodeSvc    *NodeService
+	spiderSvc  *SpiderService
 }
 
 func (svc *Service) Init() (err error) {
@@ -54,6 +55,7 @@ func (svc *Service) Init() (err error) {
 	svc.taskSvc.Init()
 	svc.pythonSvc.Init()
 	svc.nodeSvc.Init()
+	svc.spiderSvc.Init()
 
 	return nil
 }
@@ -535,6 +537,7 @@ func NewService() *Service {
 	svc.taskSvc = NewTaskService(svc)
 	svc.pythonSvc = NewPythonService(svc)
 	svc.nodeSvc = NewNodeService(svc)
+	svc.spiderSvc = NewSpiderService(svc)
 
 	// initialize
 	if err := svc.Init(); err != nil {

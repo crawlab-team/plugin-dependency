@@ -10,28 +10,38 @@
   },
   "install_url": "https://github.com/crawlab-team/plugin-dependency",
   "deploy_mode": "all",
-  "auto_start": true,
+  "auto_start": false,
   "ui_components": [
     {
       "name": "dependency-settings",
-      "title": "Dependencies",
+      "title": "Dependencies Settings",
       "src": "ui/src/setting/DependencySettings.vue",
       "type": "view",
       "path": "dependencies/settings"
     },
     {
       "name": "dependency-python",
-      "title": "Dependencies",
+      "title": "Dependencies Python",
       "src": "ui/src/python/DependencyPython.vue",
       "type": "view",
       "path": "dependencies/python"
     },
     {
       "name": "dependency-node",
-      "title": "Dependencies",
+      "title": "Dependencies Node",
       "src": "ui/src/node/DependencyNode.vue",
       "type": "view",
       "path": "dependencies/node"
+    },
+    {
+      "name": "dependencies",
+      "title": "Dependencies",
+      "src": "ui/src/spider/DependencySpiderTab.vue",
+      "type": "tab",
+      "path": "dependencies",
+      "parent_paths": [
+        "/spiders/:id"
+      ]
     }
   ],
   "ui_sidebar_navs": [

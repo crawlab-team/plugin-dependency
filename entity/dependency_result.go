@@ -9,4 +9,6 @@ type DependencyResult struct {
 	LatestVersion string               `json:"latest_version" bson:"latest_version"`
 	Count         int                  `json:"count,omitempty" bson:"count,omitempty"`
 	Upgradable    bool                 `json:"upgradable" bson:"upgradable"`
+	Downgradable  bool                 `json:"downgradable" bson:"downgradable"`
+	Installable   bool                 `json:"installable" bson:"installable"`
 }

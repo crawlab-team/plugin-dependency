@@ -17,6 +17,7 @@ import (
 	mongo2 "go.mongodb.org/mongo-driver/mongo"
 	"net/url"
 	"os/exec"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -194,14 +195,29 @@ func (svc *PythonService) InstallDependencies(params entity.InstallParams) (err 
 		args = append(args, params.Proxy)
 	}
 
-	// upgrade
-	if params.Upgrade {
-		args = append(args, "-U")
-	}
+	if params.UseConfig {
+		// workspace path
+		workspacePath, err := svc._getInstallWorkspacePath(params)
+		if err != nil {
+			return err
+		}
 
-	// dependency names
-	for _, depName := range params.Names {
-		args = append(args, depName)
+		// config path
+		configPath := path.Join(workspacePath, constants.DependencyConfigRequirementsTxt)
+
+		// use config
+		args = append(args, "-r")
+		args = append(args, configPath)
+	} else {
+		// upgrade
+		if params.Upgrade {
+			args = append(args, "-U")
+		}
+
+		// dependency names
+		for _, depName := range params.Names {
+			args = append(args, depName)
+		}
 	}
 
 	// command

@@ -8,6 +8,7 @@ import (
 	"github.com/crawlab-team/crawlab-core/controllers"
 	"github.com/crawlab-team/crawlab-core/interfaces"
 	models2 "github.com/crawlab-team/crawlab-core/models/models"
+	"github.com/crawlab-team/crawlab-core/spider/fs"
 	"github.com/crawlab-team/crawlab-db/mongo"
 	grpc "github.com/crawlab-team/crawlab-grpc"
 	"github.com/crawlab-team/go-trace"
@@ -118,11 +119,13 @@ func (svc *baseService) install(c *gin.Context) {
 
 		// params
 		params := &entity.InstallParams{
-			TaskId:  t.Id,
-			Upgrade: payload.Upgrade,
-			Names:   payload.Names,
-			Proxy:   svc.s.Proxy,
-			Cmd:     svc._getCmd(),
+			TaskId:    t.Id,
+			Upgrade:   payload.Upgrade,
+			Names:     payload.Names,
+			Proxy:     svc.s.Proxy,
+			Cmd:       svc._getCmd(),
+			UseConfig: payload.UseConfig,
+			SpiderId:  payload.SpiderId,
 		}
 
 		// message data
@@ -722,6 +725,21 @@ func (svc *baseService) _getCmd() (cmd string) {
 		return svc.defaultCmd
 	}
 	return svc.s.Cmd
+}
+
+func (svc *baseService) _getInstallWorkspacePath(params entity.InstallParams) (workspacePath string, err error) {
+	// spider fs service
+	fsSvc, err := fs.NewSpiderFsService(params.SpiderId)
+	if err != nil {
+		return workspacePath, err
+	}
+
+	// sync to workspace
+	if err := fsSvc.GetFsService().SyncToWorkspace(); err != nil {
+		return workspacePath, err
+	}
+
+	return fsSvc.GetWorkspacePath(), nil
 }
 
 func newBaseService(svc DependencyService, parent *Service, key string, codes entity.MessageCodes) (res *baseService) {

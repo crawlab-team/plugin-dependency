@@ -204,8 +204,9 @@ export default defineComponent({
           value: 'python',
         }],
       });
-      if (res.data && res.data.length > 0) {
-        setting.value = res.data[0];
+      const {data} = res;
+      if (data && data.length > 0) {
+        setting.value = data[0];
       }
     };
 
@@ -220,11 +221,6 @@ export default defineComponent({
     });
 
     const uninstallForm = ref({
-      nodes: [],
-      names: [],
-    });
-
-    const upgradeForm = ref({
       nodes: [],
       names: [],
     });

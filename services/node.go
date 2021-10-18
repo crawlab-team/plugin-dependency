@@ -184,14 +184,18 @@ func (svc *NodeService) InstallDependencies(params entity.InstallParams) (err er
 		args = append(args, params.Proxy)
 	}
 
-	// dependency names
-	for _, depName := range params.Names {
-		// upgrade
-		if params.Upgrade {
-			depName = depName + "@latest"
-		}
+	if params.UseConfig {
+		// use config
+	} else {
+		// dependency names
+		for _, depName := range params.Names {
+			// upgrade
+			if params.Upgrade {
+				depName = depName + "@latest"
+			}
 
-		args = append(args, depName)
+			args = append(args, depName)
+		}
 	}
 
 	// command

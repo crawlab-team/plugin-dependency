@@ -11,6 +11,7 @@
   "install_url": "https://github.com/crawlab-team/plugin-dependency",
   "deploy_mode": "all",
   "auto_start": true,
+  "lang_url": "ui/lang",
   "ui_components": [
     {
       "name": "dependency-settings",
@@ -35,7 +36,7 @@
     },
     {
       "name": "dependencies",
-      "title": "Dependencies",
+      "title": "ui_components.title.dependencies",
       "src": "ui/src/spider/DependencySpiderTab.vue",
       "type": "tab",
       "path": "dependencies",
@@ -47,7 +48,7 @@
   "ui_sidebar_navs": [
     {
       "path": "/dependencies",
-      "title": "Dependencies",
+      "title": "plugins.dependency.ui_sidebar_navs.title.dependencies",
       "icon": [
         "fa",
         "puzzle-piece"
@@ -55,7 +56,7 @@
       "children": [
         {
           "path": "/dependencies/python",
-          "title": "Python",
+          "title": "plugins.dependency.ui_sidebar_navs.title.python",
           "icon": [
             "fab",
             "python"
@@ -63,7 +64,7 @@
         },
         {
           "path": "/dependencies/node",
-          "title": "Node",
+          "title": "plugins.dependency.ui_sidebar_navs.title.node",
           "icon": [
             "fab",
             "node-js"
@@ -71,7 +72,7 @@
         },
         {
           "path": "/dependencies/settings",
-          "title": "Settings",
+          "title": "plugins.dependency.ui_sidebar_navs.title.settings",
           "icon": [
             "fa",
             "cog"

@@ -19,8 +19,8 @@
               class="search-query"
               v-model="searchQuery"
               size="small"
-              placeholder="Search dependencies"
-              prefix-icon="el-icon-search"
+              :placeholder="t('common.searchDependencies')"
+              :prefix-icon="Search"
               clearable
               @keyup.enter="onSearch"
               @clear="onSearchClear"
@@ -29,7 +29,7 @@
               class="search-btn"
               size="small"
               :icon="['fa', 'search']"
-              label="Search"
+              :placeholder="t('common.search')"
               :disabled="!installed ? !searchQuery : false"
               @click="onSearch"
           />
@@ -41,11 +41,11 @@
           >
             <el-radio-button label="installed">
               <font-awesome-icon :icon="['fa', 'check']" style="margin-right: 5px"/>
-              Installed
+              {{ t('common.installed') }}
             </el-radio-button>
             <el-radio-button label="installable">
               <font-awesome-icon :icon="['fab', 'node-js']" style="margin-right: 5px"/>
-              Installable
+              {{ t('common.installable') }}
             </el-radio-button>
           </el-radio-group>
           <cl-fa-icon-button
@@ -69,7 +69,7 @@
                 :spin="runningTaskTotal > 0"
                 style="margin-right: 5px"
             />
-            {{ runningTaskTotal === 0 ? `Tasks` : `Tasks (${runningTaskTotal})` }}
+            {{ runningTaskTotal === 0 ? t('task.tasks') : `${t('task.tasks')} (${runningTaskTotal})` }}
           </cl-button>
         </div>
         <el-pagination
@@ -117,6 +117,7 @@
 import {computed, defineComponent, h, onBeforeUnmount, onMounted, ref} from 'vue';
 import {ClNavLink, ClNodeType, ClTag, useRequest} from 'crawlab-ui';
 import {ElMessage} from 'element-plus';
+import {Search} from '@element-plus/icons';
 import {useStore} from 'vuex';
 import InstallForm from '../components/form/InstallForm.vue';
 import UninstallForm from '../components/form/UninstallForm.vue';
@@ -125,6 +126,10 @@ import DependencyTaskList from '../task/DependencyTaskList.vue';
 const endpoint = '/plugin-proxy/dependency/node';
 const endpointS = '/plugin-proxy/dependency/settings';
 const endpointT = '/plugin-proxy/dependency/tasks';
+
+const pluginName = 'dependency';
+const t = (path) => window['_tp'](pluginName, path);
+const _t = window['_t'];
 
 const {
   get,
@@ -204,15 +209,16 @@ export default defineComponent({
           value: 'node',
         }],
       });
-      if (res.data && res.data.length > 0) {
-        setting.value = res.data[0];
+      const {data} = res;
+      if (data && data.length > 0) {
+        setting.value = data[0];
       }
     };
 
     onMounted(getSetting);
 
     const updateTooltip = computed(() => {
-      return `Click to update dependencies`;
+      return t('actions.updateTooltip');
     });
 
     const installForm = ref({
@@ -270,7 +276,7 @@ export default defineComponent({
       return [
         {
           key: 'name',
-          label: 'Name',
+          label: t('table.columns.name'),
           icon: ['fa', 'font'],
           width: '200',
           value: (row) => h(ClNavLink, {
@@ -281,13 +287,13 @@ export default defineComponent({
         },
         {
           key: 'latest_version',
-          label: 'Latest Version',
+          label: t('table.columns.latestVersion'),
           icon: ['fa', 'tag'],
           width: '200',
         },
         {
           key: 'versions',
-          label: 'Installed Version',
+          label: t('table.columns.installedVersion'),
           icon: ['fa', 'tag'],
           width: '200',
           value: (row) => {
@@ -306,7 +312,7 @@ export default defineComponent({
                 type: 'primary',
                 effect: 'light',
                 size: 'mini',
-                tooltip: 'Upgradable',
+                tooltip: t('common.upgradable'),
                 icon: ['fa', 'arrow-up'],
               }));
             }
@@ -315,7 +321,7 @@ export default defineComponent({
         },
         {
           key: 'node_ids',
-          label: 'Installed Nodes',
+          label: t('table.columns.installedNodes'),
           icon: ['fa', 'server'],
           width: '580',
           value: (row) => {
@@ -333,14 +339,14 @@ export default defineComponent({
         },
         {
           key: 'actions',
-          label: 'Actions',
+          label: _t('components.table.columns.actions'),
           fixed: 'right',
           width: '200',
           buttons: (row) => [
             {
               type: 'primary',
               icon: ['fa', 'download'],
-              tooltip: row.upgradable ? 'Install and upgrade' : 'Install',
+              tooltip: row.upgradable ? t('actions.installAndUpgrade') : t('actions.install'),
               disabled: (row) => !isInstallable(row),
               onClick: async (row) => {
                 installForm.value.names = [row.name];
@@ -350,7 +356,7 @@ export default defineComponent({
             {
               type: 'danger',
               icon: ['fa', 'trash-alt'],
-              tooltip: 'Uninstall',
+              tooltip: t('actions.uninstall'),
               disabled: (row) => !isUninstallable(row),
               onClick: async (row) => {
                 uninstallForm.value.nodes = getNodes(row);
@@ -376,8 +382,8 @@ export default defineComponent({
     const tableActionsPrefix = ref([
       {
         buttonType: 'fa-icon',
-        label: 'Install',
-        tooltip: 'Install',
+        label: t('actions.install'),
+        tooltip: t('actions.install'),
         icon: ['fa', 'download'],
         type: 'primary',
         disabled: () => installForm.value.names.length === 0,
@@ -387,8 +393,8 @@ export default defineComponent({
       },
       {
         buttonType: 'fa-icon',
-        label: 'Uninstall',
-        tooltip: 'Uninstall',
+        label: t('actions.uninstall'),
+        tooltip: t('actions.uninstall'),
         icon: ['fa', 'trash-alt'],
         type: 'danger',
         disabled: () => !installed.value || uninstallForm.value.names.length === 0,
@@ -513,7 +519,7 @@ export default defineComponent({
         data['node_id'] = nodeIds;
       }
       await post(`${endpoint}/install`, data);
-      await ElMessage.success('Started to install dependencies');
+      await ElMessage.success(t('message.success.install'));
       await getRunningTaskList();
       onDialogClose('install');
     };
@@ -527,7 +533,7 @@ export default defineComponent({
         data['node_id'] = nodeIds;
       }
       await post(`${endpoint}/uninstall`, data);
-      await ElMessage.success('Started to uninstall dependencies');
+      await ElMessage.success(t('message.success.uninstall'));
       await getRunningTaskList();
       onDialogClose('uninstall');
     };
@@ -569,6 +575,8 @@ export default defineComponent({
       runningTaskList,
       runningTaskTotal,
       getRunningTaskList,
+      Search,
+      t,
     };
   },
 });
@@ -586,6 +594,11 @@ export default defineComponent({
   align-items: center;
   justify-content: space-between;
   height: 64px;
+}
+
+.top-bar > * {
+  display: flex;
+  align-items: center;
 }
 
 .top-bar >>> .search-btn {

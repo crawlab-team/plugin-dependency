@@ -26,11 +26,14 @@
 </template>
 
 <script lang="ts">
-import {defineComponent, onBeforeMount, ref, h} from 'vue';
-import {useRequest, ClNavLink, ClSwitch} from 'crawlab-ui';
-import {useRouter} from 'vue-router';
+import {defineComponent, computed, ref, h} from 'vue';
+import {useRequest, ClNavLink} from 'crawlab-ui';
 import DependencySettingForm from './DependencySettingForm.vue';
 import {ElMessage} from 'element-plus';
+
+const pluginName = 'dependency';
+const t = (path) => window['_tp'](pluginName, path);
+const _t = window['_t'];
 
 const endpoint = '/plugin-proxy/dependency/settings';
 
@@ -47,10 +50,10 @@ export default defineComponent({
 
     const dialogVisible = ref(false);
 
-    const tableColumns = [
+    const tableColumns = computed(() => [
       {
         key: 'name',
-        label: 'Name',
+        label: t('table.columns.name'),
         icon: ['fa', 'font'],
         width: '150',
         value: (row) => h(ClNavLink, {
@@ -77,20 +80,21 @@ export default defineComponent({
       // },
       {
         key: 'description',
-        label: 'Description',
+        label: t('settings.table.columns.description'),
         icon: ['fa', 'comment-alt'],
-        width: 'auto',
+        width: '1000',
+        value: (row) => t(row.description),
       },
       {
         key: 'actions',
-        label: 'Actions',
+        label: _t('components.table.columns.actions'),
         fixed: 'right',
         width: '200',
         buttons: [
           {
             type: 'warning',
             icon: ['fa', 'cog'],
-            tooltip: 'Manage',
+            tooltip: t('settings.manage'),
             onClick: (row) => {
               form.value = {...row};
               dialogVisible.value = true;
@@ -99,7 +103,7 @@ export default defineComponent({
         ],
         disableTransfer: true,
       },
-    ];
+    ]);
 
     const tableData = ref([]);
 
@@ -133,7 +137,7 @@ export default defineComponent({
     const onDialogConfirm = async () => {
       if (!form.value._id) return;
       await post(`${endpoint}/${form.value._id}`, form.value);
-      await ElMessage.success('Saved successfully');
+      await ElMessage.success(_t('common.message.success.save'));
       form.value = {};
       dialogVisible.value = false;
     };
@@ -153,6 +157,7 @@ export default defineComponent({
       onDialogClose,
       onDialogConfirm,
       onFormChange,
+      t,
     };
   },
 });

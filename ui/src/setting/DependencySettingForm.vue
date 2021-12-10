@@ -3,26 +3,29 @@
       :key="JSON.stringify(form)"
       :model="form"
   >
-    <cl-form-item :span="4" prop="key" label="Key">
+    <cl-form-item :span="4" prop="key" :label="t('settings.form.key')">
       <el-input v-model="internalForm.key" disabled/>
     </cl-form-item>
-    <cl-form-item :span="4" prop="name" label="Name">
+    <cl-form-item :span="4" prop="name" :label="t('settings.form.name')">
       <el-input v-model="internalForm.name" disabled/>
     </cl-form-item>
-    <cl-form-item :span="4" prop="description" label="Description">
-      <el-input v-model="internalForm.description" type="textarea" disabled/>
+    <cl-form-item :span="4" prop="description" :label="t('settings.form.description')">
+      <el-input :model-value="t(internalForm.description)" type="textarea" disabled/>
     </cl-form-item>
-    <cl-form-item :span="4" prop="cmd" label="Command">
-      <el-input v-model="internalForm.cmd" placeholder="Command" @change="onChange"/>
+    <cl-form-item :span="4" prop="cmd" :label="t('settings.form.command')">
+      <el-input v-model="internalForm.cmd" :placeholder="t('settings.form.command')" @change="onChange"/>
     </cl-form-item>
-    <cl-form-item :span="4" prop="proxy" label="Proxy">
-      <el-input v-model="internalForm.proxy" placeholder="Proxy" @change="onChange"/>
+    <cl-form-item :span="4" prop="proxy" :label="t('settings.form.proxy')">
+      <el-input v-model="internalForm.proxy" :placeholder="t('settings.form.proxy')" @change="onChange"/>
     </cl-form-item>
   </cl-form>
 </template>
 
 <script lang="ts">
 import {defineComponent, onBeforeMount, ref, watch} from 'vue';
+
+const pluginName = 'dependency';
+const t = (path) => window['_tp'](pluginName, path);
 
 export default defineComponent({
   name: 'DependencySettingForm',
@@ -54,6 +57,7 @@ export default defineComponent({
     return {
       internalForm,
       onChange,
+      t,
     };
   },
 });

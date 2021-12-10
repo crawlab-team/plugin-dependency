@@ -9,7 +9,7 @@
       @pagination-change="onPaginationChange"
   />
   <cl-dialog
-      title="Logs"
+      :title="t('task.logs')"
       :visible="dialogVisible.logs"
       width="1200px"
       @confirm="onLogsClose"
@@ -25,6 +25,10 @@ import {ClNodeType, ClTag, ClTaskStatus, ClTime, useRequest} from 'crawlab-ui';
 import {useStore} from 'vuex';
 import TaskAction from './TaskAction.vue';
 import LogsView from './LogsView.vue';
+
+const pluginName = 'dependency';
+const t = (path) => window['_tp'](pluginName, path);
+const _t = window['_t'];
 
 const endpoint = '/plugin-proxy/dependency/tasks';
 
@@ -73,10 +77,10 @@ export default defineComponent({
 
     const allNodeDict = computed(() => store.getters[`node/allDict`]);
 
-    const tableColumns = ref([
+    const tableColumns = computed(() => [
       {
         key: 'action',
-        label: 'Action',
+        label: t('task.table.columns.action'),
         icon: ['fa', 'hammer'],
         width: '120',
         value: (row) => {
@@ -85,7 +89,7 @@ export default defineComponent({
       },
       {
         key: 'node',
-        label: 'Node',
+        label: t('task.table.columns.node'),
         icon: ['fa', 'server'],
         width: '120',
         value: (row) => {
@@ -99,7 +103,7 @@ export default defineComponent({
       },
       {
         key: 'status',
-        label: 'Status',
+        label: t('task.table.columns.status'),
         icon: ['fa', 'check-square'],
         width: '120',
         value: (row) => {
@@ -108,7 +112,7 @@ export default defineComponent({
       },
       {
         key: 'dep_names',
-        label: 'Dependencies',
+        label: t('task.table.columns.dependencies'),
         icon: ['fa', 'puzzle-piece'],
         width: '380',
         value: (row) => {
@@ -120,7 +124,7 @@ export default defineComponent({
       },
       {
         key: 'update_ts',
-        label: 'Time',
+        label: t('task.table.columns.time'),
         icon: ['fa', 'clock'],
         width: '150',
         value: (row) => {
@@ -129,7 +133,7 @@ export default defineComponent({
       },
       {
         key: 'actions',
-        label: 'Actions',
+        label: _t('components.table.columns.actions'),
         fixed: 'right',
         width: '80',
         buttons: (row) => {
@@ -137,7 +141,7 @@ export default defineComponent({
             {
               type: 'primary',
               icon: ['fa', 'file-alt'],
-              tooltip: 'Logs',
+              tooltip: t('task.logs'),
               onClick: async (row) => {
                 await onLogsOpen(row._id);
               },
@@ -200,6 +204,7 @@ export default defineComponent({
       getList,
       logs,
       onLogsClose,
+      t,
     };
   },
 });

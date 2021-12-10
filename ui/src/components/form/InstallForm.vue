@@ -1,6 +1,6 @@
 <template>
   <cl-dialog
-      title="Install"
+      :title="t('actions.install')"
       :visible="visible"
       width="640px"
       :confirm-loading="loading"
@@ -8,7 +8,7 @@
       @close="onClose"
   >
     <cl-form>
-      <cl-form-item :span="4" label="Dependency Name">
+      <cl-form-item :span="4" :label="t('components.form.dependencyName')">
         <cl-tag
             v-for="n in names"
             :key="n"
@@ -18,17 +18,17 @@
             size="small"
         />
       </cl-form-item>
-      <cl-form-item :span="4" label="Mode">
+      <cl-form-item :span="4" :label="t('components.form.mode')">
         <el-select v-model="mode">
-          <el-option value="all" label="All Nodes"/>
-          <el-option value="selected-nodes" label="Selected Nodes"/>
+          <el-option value="all" :label="t('components.form.allNodes')"/>
+          <el-option value="selected-nodes" :label="t('components.form.selectedNodes')"/>
         </el-select>
       </cl-form-item>
-      <cl-form-item label="Upgrade">
+      <cl-form-item :label="t('components.form.upgrade')">
         <cl-switch v-model="upgrade"/>
       </cl-form-item>
-      <cl-form-item v-if="mode === 'selected-nodes'" :span="4" label="Selected Nodes">
-        <el-select v-model="nodeIds" multiple placeholder="Select Nodes">
+      <cl-form-item v-if="mode === 'selected-nodes'" :span="4" :label="t('components.form.selectedNodes')">
+        <el-select v-model="nodeIds" multiple :placeholder="t('components.form.selectNodes')">
           <el-option v-for="n in nodes" :key="n.key" :value="n._id" :label="n.name"/>
         </el-select>
       </cl-form-item>
@@ -38,6 +38,9 @@
 
 <script lang="ts">
 import {defineComponent, ref} from 'vue';
+
+const pluginName = 'dependency';
+const t = (path) => window['_tp'](pluginName, path);
 
 export default defineComponent({
   name: 'InstallForm',
@@ -95,6 +98,7 @@ export default defineComponent({
       nodeIds,
       onConfirm,
       onClose,
+      t,
     };
   },
 });

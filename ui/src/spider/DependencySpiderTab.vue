@@ -5,7 +5,7 @@
           :model="spiderData"
           inline
       >
-        <cl-form-item label="Dependency Type">
+        <cl-form-item :label="t('spider.dependencyType')">
           <cl-tag
               :label="spiderDataDependencyTypeLabel"
               :type="spiderDataDependencyTypeType"
@@ -21,7 +21,7 @@
           @click="onInstallByConfig"
       >
         <font-awesome-icon class="icon" :icon="['fa', 'download']"/>
-        Install
+        {{ t('actions.install') }}
       </cl-button>
     </div>
     <cl-table
@@ -54,6 +54,10 @@ import {useStore} from 'vuex';
 import InstallForm from '../components/form/InstallForm.vue';
 import UninstallForm from '../components/form/UninstallForm.vue';
 import {ElMessage, ElMessageBox} from 'element-plus';
+
+const pluginName = 'dependency';
+const t = (path) => window['_tp'](pluginName, path);
+const _t = window['_t'];
 
 const {
   get,
@@ -96,7 +100,7 @@ export default defineComponent({
       return [
         {
           key: 'name',
-          label: 'Name',
+          label: t('table.columns.name'),
           icon: ['fa', 'font'],
           width: '200',
           value: (row) => h(ClNavLink, {
@@ -107,7 +111,7 @@ export default defineComponent({
         },
         {
           key: 'version',
-          label: 'Required Version',
+          label: t('table.columns.requiredVersion'),
           icon: ['fa', 'tag'],
           width: '200',
         },
@@ -119,7 +123,7 @@ export default defineComponent({
         // },
         {
           key: 'versions',
-          label: 'Installed Version',
+          label: t('table.columns.installedVersion'),
           icon: ['fa', 'tag'],
           width: '200',
           value: (row) => {
@@ -134,7 +138,7 @@ export default defineComponent({
                 type: 'primary',
                 effect: 'light',
                 size: 'mini',
-                tooltip: 'Upgradable',
+                tooltip: t('common.upgradable'),
                 icon: ['fa', 'arrow-up'],
               }));
             } else if (result.downgradable) {
@@ -142,7 +146,7 @@ export default defineComponent({
                 type: 'warning',
                 effect: 'light',
                 size: 'mini',
-                tooltip: 'Downgradable',
+                tooltip: t('common.downgradable'),
                 icon: ['fa', 'arrow-down'],
               }));
             }
@@ -151,7 +155,7 @@ export default defineComponent({
         },
         {
           key: 'node_ids',
-          label: 'Installed Nodes',
+          label: t('table.columns.installedNodes'),
           icon: ['fa', 'server'],
           width: '580',
           value: (row) => {
@@ -170,7 +174,7 @@ export default defineComponent({
         },
         {
           key: 'actions',
-          label: 'Actions',
+          label: _t('components.table.columns.actions'),
           fixed: 'right',
           width: '200',
           buttons: (row) => {
@@ -178,11 +182,11 @@ export default defineComponent({
             if (!result) result = {};
             let tooltip;
             if (result.upgradable) {
-              tooltip = 'Install and upgrade';
+              tooltip = t('actions.installAndUpgrade');
             } else if (result.downgradable) {
-              tooltip = 'Install and downgrade';
-            } else if (isInstallable(row)){
-              tooltip = 'Install';
+              tooltip = t('actions.installAndDowngrade');
+            } else if (isInstallable(row)) {
+              tooltip = t('actions.install');
             } else {
               tooltip = '';
             }
@@ -200,7 +204,7 @@ export default defineComponent({
               {
                 type: 'danger',
                 icon: ['fa', 'trash-alt'],
-                tooltip: 'Uninstall',
+                tooltip: t('actions.uninstall'),
                 disabled: (row) => !isUninstallable(row),
                 onClick: async (row) => {
                   uninstallForm.value.names = [row.name];
@@ -241,7 +245,7 @@ export default defineComponent({
         case 'package.json':
           return 'NPM';
         default:
-          return 'No Dependency Type';
+          return t('spider.noDependencyType');
       }
     });
 
@@ -259,22 +263,22 @@ export default defineComponent({
     const spiderDataDependencyTypeTooltip = computed(() => {
       switch (spiderData.value.dependency_type) {
         case 'requirements.txt':
-          return 'requirements.txt identified in root folder';
+          return t('spider.tooltip.requirementsTxt');
         case 'package.json':
-          return 'package.json identified in root folder';
+          return t('spider.tooltip.packageJson');
         default:
-          return 'info';
+          return t('spider.tooltip.other');
       }
     });
 
     const installButtonTooltip = computed(() => {
       switch (spiderData.value.dependency_type) {
         case 'requirements.txt':
-          return 'Install by requirements.txt';
+          return t('spider.installButton.tooltip.requirementsTxt');
         case 'package.json':
-          return 'Install by package.json';
+          return t('spider.installButton.tooltip.packageJson');
         default:
-          return '';
+          return t('spider.installButton.tooltip.other');
       }
     });
 
@@ -376,6 +380,7 @@ export default defineComponent({
       uninstallForm,
       installButtonTooltip,
       onInstallByConfig,
+      t,
     };
   },
 });

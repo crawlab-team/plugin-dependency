@@ -118,7 +118,7 @@ func (svc *Service) initData() (err error) {
 			Id:          primitive.NewObjectID(),
 			Key:         constants.DependencyTypePython,
 			Name:        "Python",
-			Description: `Dependencies for Python environment`,
+			Description: "settings.description.python",
 			Cmd:         "pip",
 			Enabled:     true,
 		},
@@ -127,7 +127,7 @@ func (svc *Service) initData() (err error) {
 			Key:         constants.DependencyTypeNode,
 			Name:        "Node.js",
 			Cmd:         "npm",
-			Description: `Dependencies for Node.js environment`,
+			Description: "settings.description.node",
 			Enabled:     true,
 		},
 	}

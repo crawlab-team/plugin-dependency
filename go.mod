@@ -9,7 +9,7 @@ require (
 	github.com/crawlab-team/crawlab-core v0.6.0-beta.20211213.2006
 	github.com/crawlab-team/crawlab-db v0.1.2
 	github.com/crawlab-team/crawlab-grpc v0.6.0-beta.20211009.1455
-	github.com/crawlab-team/crawlab-plugin v0.6.0-beta.20211218.1814
+	github.com/crawlab-team/crawlab-plugin v0.6.0-beta.20211218.1828
 	github.com/crawlab-team/go-trace v0.1.0
 	github.com/gin-gonic/gin v1.7.4
 	github.com/imroc/req v0.3.0

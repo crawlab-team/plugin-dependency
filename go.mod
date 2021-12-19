@@ -6,7 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.7.1
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cenkalti/backoff/v4 v4.1.0
-	github.com/crawlab-team/crawlab-core v0.6.0-beta.20211213.2006
+	github.com/crawlab-team/crawlab-core v0.6.0-beta.20211219.1940
 	github.com/crawlab-team/crawlab-db v0.1.3
 	github.com/crawlab-team/crawlab-grpc v0.6.0-beta.20211219.1930
 	github.com/crawlab-team/crawlab-plugin v0.6.0-beta.20211219.1931

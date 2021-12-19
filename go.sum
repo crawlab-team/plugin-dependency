@@ -79,6 +79,7 @@ github.com/crawlab-team/crawlab-core v0.6.0-beta.20211009.1458 h1:gfnliihtpW4RU4
 github.com/crawlab-team/crawlab-core v0.6.0-beta.20211009.1458/go.mod h1:IwwrW+sWPHE8agUxO4aF3XFhUonflQEylngtfkDgUNk=
 github.com/crawlab-team/crawlab-core v0.6.0-beta.20211213.2006 h1:HI4DHGm94DzcQQSHaAYgZKls0Y0hN3T8//3LsmYqLGM=
 github.com/crawlab-team/crawlab-core v0.6.0-beta.20211213.2006/go.mod h1:ZFiBIFfs5tvSmtlc4zcyWyes6w0VVjAh/85QsDeyOuE=
+github.com/crawlab-team/crawlab-core v0.6.0-beta.20211219.1940/go.mod h1:z4WY7t+bhia2pti3422oURjeFLMxODGmRiSryTccIW8=
 github.com/crawlab-team/crawlab-db v0.0.2/go.mod h1:o7o4rbcyAWlFGHg9VS7V7tM/GqRq+N2mnAXO71cZA78=
 github.com/crawlab-team/crawlab-db v0.1.1 h1:156h2fbbFKXAHs1mxprqRFC8zs2nrdyaG9JKG7patVw=
 github.com/crawlab-team/crawlab-db v0.1.1/go.mod h1:t0VidSjXKzQgACqNSQV5wusXncFtL6lGEiQTbLfNR04=

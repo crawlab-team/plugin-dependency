@@ -186,9 +186,10 @@ func (svc *Service) initIndexes() (err error) {
 }
 
 func (svc *Service) handleStreamMessages() {
-	if err := backoff.Retry(svc._connect, backoff.NewExponentialBackOff()); err != nil {
+	if err := svc.connect(); err != nil {
 		panic(err)
 	}
+
 	for {
 		msg, err := svc.msgStream.Recv()
 		if err == io.EOF {
@@ -198,12 +199,15 @@ func (svc *Service) handleStreamMessages() {
 		if err != nil {
 			trace.PrintError(err)
 			time.Sleep(1 * time.Second)
+			_ = svc.connect()
 			continue
 		}
 
 		var msgData entity.MessageData
 		if err := json.Unmarshal(msg.Data, &msgData); err != nil {
 			trace.PrintError(err)
+			time.Sleep(1 * time.Second)
+			_ = svc.connect()
 			continue
 		}
 
@@ -232,6 +236,13 @@ func (svc *Service) handleStreamMessages() {
 			go svc.nodeSvc.uninstallDependency(msg, msgData)
 		}
 	}
+}
+
+func (svc *Service) connect() (err error) {
+	if err := backoff.Retry(svc._connect, backoff.NewExponentialBackOff()); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (svc *Service) _connect() (err error) {

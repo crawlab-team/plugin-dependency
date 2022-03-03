@@ -18,7 +18,6 @@
           <el-input
               class="search-query"
               v-model="searchQuery"
-              size="small"
               :placeholder="t('common.searchDependencies')"
               :prefix-icon="Search"
               clearable
@@ -27,7 +26,6 @@
           />
           <cl-label-button
               class="search-btn"
-              size="small"
               :icon="['fa', 'search']"
               :placeholder="t('common.search')"
               :disabled="!installed ? !searchQuery : false"
@@ -36,7 +34,6 @@
           <el-radio-group
               class="view-mode"
               v-model="viewMode"
-              size="small"
               @change="onInstalledChange"
           >
             <el-radio-button label="installed">
@@ -50,7 +47,6 @@
           </el-radio-group>
           <cl-fa-icon-button
               class="update-btn"
-              size="small"
               type="primary"
               :tooltip="updateTooltip"
               :icon="updateInstalledLoading ? ['fa', 'spinner'] : ['fa', 'sync']"
@@ -60,7 +56,6 @@
           />
           <cl-button
               class="tasks-btn"
-              size="small"
               :type="runningTaskTotal === 0 ? 'primary' : 'warning'"
               @click="() => onDialogOpen('tasks')"
           >
